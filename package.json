@@ -1,0 +1,13 @@
+{
+  "name": "muxrpc-state",
+  "description": "An implementation of the muxrpc state machine.",
+  "author": "Kira Oakley <kira@eight.net>",
+  "version": "0.0.0",
+  "repository": {
+    "url": "git://github.com/noffle/muxrpc-state.git"
+  },
+  "homepage": "https://github.com/noffle/muxrpc-state",
+  "bugs": "https://github.com/noffle/muxrpc-state/issues",
+  "main": "index.js",
+  "license": "MIT"
+}
