@@ -10,14 +10,15 @@ const header = {
 }
 rpc.request(header, 'json', (err, info) => {})
 
-rpc.onRequest = function (req) {
+rpc.onRequest(function (req) {
+  console.log('got req', req)
   // { name, type, args, encoding }
   // also one of:
   //  - cb
   //  - sink
   //  - source
   //  - sink, source
-}
+})
 
 pull(
   rpc.stream,

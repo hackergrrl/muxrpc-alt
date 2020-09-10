@@ -1,11 +1,24 @@
 const Reader = require('pull-reader')
 const Pushable = require('pull-pushable')
 
+/*
+{
+  header: {
+    id,
+    length,
+    encoding,
+    err,
+    stream
+  },
+  body: <payload>
+}
+*/
+
 const TYPES = [
-  'source',
+  // 'source',
   // 'sink',   // XXX: not implemented
   'async',
-  'duplex'
+  // 'duplex'
 ]
 
 function RpcCore () {
@@ -36,7 +49,8 @@ function RpcCore () {
           // TODO: handle incoming async request
           const req = {
             id: header.id,
-            rpcHeader: header
+            rpcHeader: header,
+            body
           }
           incoming[header.id] = req
           console.log(header, body)
@@ -114,20 +128,25 @@ function RpcCore () {
   }
 }
 
-function encodeRequest (req) {
-  const body = Buffer.from(JSON.stringify(req.header))
+function encodeHeader (req) {
   const header = Buffer.alloc(9)
   
   let flags = 0
-  if (req.header.type !== 'async') flags |= 1<<3
-  if (req.encoding === 'utf8') flags |= 1
-  else if (req.encoding === 'json') flags |= 1<<1
+  if (req.header.stream) flags |= 1<<3
+  if (req.header.err) flags |= 1<<2
+  if (req.header.encoding === 'utf8') flags |= 1
+  else if (req.header.encoding === 'json') flags |= 1<<1
 
   header.writeUInt8(flags, 0)
-  header.writeUInt32BE(body.length, 1)
-  header.writeUInt32BE(req.id, 5)
+  header.writeUInt32BE(req.body.length, 1)
+  header.writeUInt32BE(req.header.id, 5)
 
-  return Buffer.concat([header, body])
+  return header
+}
+
+function encodeMessage (req) {
+  const header = encodeHeader(req)
+  return Buffer.concat([header, req.body])
 }
 
 function decodeHeader (buf) {
@@ -142,6 +161,67 @@ function decodeHeader (buf) {
   }
   return header
 }
+
+function decodeThrough () {
+  return function (read) {
+    const reader = Reader()
+    reader(read)
+
+    return function (abort, cb) {
+      reader.read(9, (err, buf) => {
+        if (err) return cb(err)
+        const header = decodeHeader(buf)
+
+        reader.read(header.length, (err, buf) => {
+          let body = buf
+          if (header.encoding === 'json') {
+            try {
+              body = JSON.parse(buf.toString())
+            } catch (err) {
+              return cb(err)
+            }
+          } else if (header.encoding === 'utf8') {
+            body = buf.toString()
+          }
+
+          cb(null, { header, body })
+        })
+      })
+    }
+  }
+}
+
+function encodeThrough () {
+  return pull.map(req => {
+    return encodeMessage(req)
+  })
+}
+
+const pull = require('pull-stream')
+const header = {
+  id: 7,
+  length: 10,
+  encoding: 'binary',
+  err: null,
+  stream: false
+}
+const payload = {
+  header,
+  body: Buffer.alloc(10)
+}
+pull(
+  pull.once(encodeMessage(payload)),
+  decodeThrough(),
+  pull.map(d => {
+    console.log('decoded into', d)
+    return d
+  }),
+  encodeThrough(),
+  decodeThrough(),
+  pull.drain(console.log, err => {
+    console.log('ended', err)
+  })
+)
 
 module.exports = RpcCore
 
