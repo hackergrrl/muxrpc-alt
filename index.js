@@ -32,47 +32,6 @@ function RpcCore () {
   let incoming = {}
   let outgoing = {}
 
-  function readLoop () {
-    sink.read(9, (err, buf) => {
-      if (err) return  // TODO: propagate error
-      const header = decodeHeader(buf)
-
-      sink.read(header.length, (err, buf) => {
-        if (err) return  // TODO: propagate error
-
-        // Decode body
-        let body = buf
-        if (header.encoding === 'json') body = JSON.parse(buf.toString())  // TODO: catch + propagate error
-        else if (header.encoding === 'utf8') body = buf.toString()
-
-        if (header.id > 0) {
-          // TODO: handle incoming async request
-          const req = {
-            id: header.id,
-            rpcHeader: header,
-            body
-          }
-          incoming[header.id] = req
-          console.log(header, body)
-
-          // TODO: ???
-
-          if (requestHandler) requestHandler(req)
-        } else if (header.id < 0) {
-          // TODO: handle incoming response (could be async or streaming)
-        } else {
-          // TODO: propagate error
-          throw new Error('bad header id')
-        }
-
-        process.nextTick(readLoop)
-      })
-    })
-  }
-
-  // Start reading network data
-  readLoop()
-
   return {
     request,
     onRequest,
@@ -96,6 +55,7 @@ function RpcCore () {
     const id = nextRequestId
     ++nextRequestId
 
+    // TODO: make structure consistent with struct at ^^^ top
     // Create the outgoing request object.
     let req = {
       id,
@@ -109,16 +69,16 @@ function RpcCore () {
     // else if (type === 'sink') req.sink = // ???
     // else if (type === 'duplex') req.duplex = // ???
 
+    // Track the request
     outgoing[id] = req
 
-    // Write the encoded request to protocol's pushable stream.
-    const payload = encodeRequest(req)
-    source.push(payload)
+    // Add message to outgoing queue
+    source.push(req)
 
     // Return a source, sink, duplex, or nothing (for async).
-    if (header.type === 'source') return req.pushable.source
-    else if (header.type === 'sink') return req.sink
-    else if (header.type === 'duplex') return req.duplex
+    // if (header.type === 'source') return req.pushable.source
+    // else if (header.type === 'sink') return req.sink
+    // else if (header.type === 'duplex') return req.duplex
   }
 
   // ---------------------------------------------------------------------------
@@ -207,7 +167,7 @@ const header = {
 }
 const payload = {
   header,
-  body: Buffer.alloc(10)
+  body: Buffer.from('helo world')
 }
 pull(
   pull.once(encodeMessage(payload)),
@@ -217,6 +177,10 @@ pull(
     return d
   }),
   encodeThrough(),
+  pull.map(d => {
+    console.log('encoded into', d)
+    return d
+  }),
   decodeThrough(),
   pull.drain(console.log, err => {
     console.log('ended', err)
