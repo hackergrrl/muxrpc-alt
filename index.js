@@ -2,7 +2,7 @@ const pull = require('pull-stream')
 const Reader = require('pull-reader')
 const Pushable = require('pull-pushable')
 
-/*
+/** Message Structure
 {
   header: {
     id,
@@ -13,12 +13,9 @@ const Pushable = require('pull-pushable')
   },
   body: <payload>
 }
-*/
+**/
 
 function RpcCore () {
-  const source = Pushable(true)
-  const sink = pull.drain(handleIncomingMessage)
-
   let requestHandlerFn
   let nextRequestId = 1
 
@@ -26,13 +23,23 @@ function RpcCore () {
   let incoming = {}
   let outgoing = {}
 
+  // The RPC protocol stream
+  const stream = {
+    source: pull(
+      // TODO: have Pushable be part of a pull-many with other sources/duplexes(?)
+      Pushable(true),
+      encodeThrough()
+    ),
+    sink: pull(
+      decodeThrough(),
+      pull.drain(handleIncomingMessage)
+    )
+  }
+
   return {
     requestAsync,
     onRequest,
-    stream: {
-      source: pull(source.source, encodeThrough()),
-      sink: pull(decodeThrough(), sink)
-    }
+    stream
   }
 
   // ---------------------------------------------------------------------------
@@ -42,14 +49,9 @@ function RpcCore () {
     if (!args || !Array.isArray(args)) throw new Error('missing argument: args')
     if (!cb || typeof cb !== 'function') throw new Error('missing argument: cb')
 
-    const id = nextRequestId
-    ++nextRequestId
+    const id = nextRequestId++
 
-    const body = JSON.stringify({
-      name,
-      type: 'async',
-      args
-    })
+    const body = JSON.stringify({ name, type: 'async', args })
     const header = {
       id,
       length: body.length,
@@ -57,11 +59,7 @@ function RpcCore () {
     }
 
     // Create the outgoing request object.
-    const req = {
-      header,
-      body,
-      cb
-    }
+    const req = { header, body, cb }
 
     // Track the request
     outgoing[id] = req
@@ -169,16 +167,21 @@ function decodeHeader (buf) {
 
 function decodeThrough () {
   return function (read) {
+    // make the sink side of this through is a pull-reader
     const reader = Reader()
     reader(read)
 
     return function (abort, cb) {
+      // read header
       reader.read(9, (err, buf) => {
         if (err) return cb(err)
         const header = decodeHeader(buf)
 
+        // read body
         reader.read(header.length, (err, buf) => {
           let body = buf
+
+          // re-encode body
           if (header.encoding === 'json') {
             try {
               body = JSON.parse(buf.toString())
