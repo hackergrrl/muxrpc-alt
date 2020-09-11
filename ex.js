@@ -10,12 +10,10 @@ rpc1.requestAsync('Echo', ['@FCX/tsDLpubCPKKfIrw4gc+SQkHcaD17s7GI6i/ziWY=.ed2551
 })
 
 rpc2.onRequest(function (req, cb) {
-  console.log('got incoming remote req', req)
-
   if (req.body.name === 'Echo') {
     cb(null, 'hi ' + req.body.args[0] + '!')
   } else {
-    cb(new Error('sorry i dont know that one'))
+    cb(new Error('unknown rpc: ' + req.body.name))
   }
 })
 
