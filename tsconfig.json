@@ -8,8 +8,9 @@
       "moduleResolution": "node",
       "resolveJsonModule": true,
       "allowJs": true,
-      "checkJs": true,
-      "noEmit": true,
+      "checkJs": false,
+    "noEmit": true,
       "typeRoots": ["types", "./node_modules/@types"]
-  }
+  },
+  "exclude": [ "test/", "coverage/", "node_modules/" ]
 }

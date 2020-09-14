@@ -1,8 +1,9 @@
 import pull = require('pull-stream')
+import { MessageBody, MessageHeader, Message, RequestMessage, RequestHandlerCb } from './types'
 import Reader = require('pull-reader')
 import Pushable = require('pull-pushable')
 
-class MuxRpc {
+export class MuxRpc {
   requestHandlerFn: RequestHandlerCb
   nextRequestId: number
 
@@ -13,7 +14,7 @@ class MuxRpc {
   // Incoming and outgoing RPC protocol streams
   source: Pushable<Message>
   sink: pull.Sink<Buffer>
-  stream: pull.Duplex<Buffer, Message>
+  private stream: pull.Duplex<Buffer, Message>
 
   constructor() {
     this.nextRequestId = 1
@@ -32,9 +33,13 @@ class MuxRpc {
       ),
       sink: pull(
         decodeThrough(),
-        pull.drain(this.handleIncomingMessage)
+        pull.drain(this.handleIncomingMessage.bind(this))
       )
     }
+  }
+
+  getStream() {
+    return this.stream
   }
 
   requestAsync(name: string, args: Array<any>, cb: (err: Error, req: Message) => void) {
@@ -197,4 +202,4 @@ function encodeThrough() {
   return pull.map(encodeMessage)
 }
 
-module.exports = MuxRpc
+export default MuxRpc
