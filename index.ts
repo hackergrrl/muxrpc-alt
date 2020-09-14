@@ -3,7 +3,7 @@ import Reader = require('pull-reader')
 import Pushable = require('pull-pushable')
 
 class MuxRpc {
-  requestHandlerFn: (msg: Message, cb: (err: Error, res: Message) => void) => void
+  requestHandlerFn: RequestHandlerCb
   nextRequestId: number
 
   // Maps a request-id to a request object
@@ -59,7 +59,7 @@ class MuxRpc {
     this.source.push(req)
   }
 
-  onRequest(cb: (msg: Message, cb: (err: Error, res: Message) => void) => void) {
+  onRequest(cb: RequestHandlerCb) {
     this.requestHandlerFn = cb
   }
 

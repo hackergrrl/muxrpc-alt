@@ -16,3 +16,5 @@ interface Message {
 interface RequestMessage extends Message {
   cb: (err?: Error, res?: any) => void
 }
+
+type RequestHandlerCb = (msg: Message, cb: (err: Error, res: Message) => void) => void
