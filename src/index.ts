@@ -15,7 +15,8 @@ export class MuxRpc {
   private source: Pushable<Message>
   private stream: pull.Duplex<Buffer, Message>
 
-  constructor() {
+  constructor(requestHandler: RequestHandlerCb) {
+    this.requestHandlerFn = requestHandler
     this.nextRequestId = 1
 
     // Maps a request-id to a request object
@@ -63,17 +64,11 @@ export class MuxRpc {
     this.source.push(req)
   }
 
-  onRequest(cb: RequestHandlerCb) {
-    this.requestHandlerFn = cb
-  }
-
   handleIncomingMessage(msg: Message) {
     const id = msg.header.id
 
     if (this.incoming.has(id)) {
-      if (!this.requestHandlerFn) return
-      // more data from a known incoming request started earlier (duplex, sink)
-      console.log('got more req!')
+      // TODO: more data from a known incoming request started earlier (duplex, sink)
     } else if (this.outgoing.has(-id)) {
       if (!msg.header.stream) this.handleAsyncResponse(msg)
     } else {
@@ -85,9 +80,8 @@ export class MuxRpc {
     console.log('got res!', res)
 
     const req = this.outgoing.get(-res.header.id)
-    if (!req) {
-      return false
-    }
+    if (!req) return
+
     const cb = req.cb
     this.outgoing.delete(-res.header.id)
 
@@ -99,8 +93,6 @@ export class MuxRpc {
   }
 
   handleNewRequest(msg: Message) {
-    if (!this.requestHandlerFn) return
-
     console.log('brand new incoming request!', msg)
     this.incoming.set(msg.header.id, msg)
 
@@ -194,14 +186,14 @@ function decodeThrough() {
 
         // read body
         reader.read(header.length, (err, buf) => {
-          if (err) return reader.abort(err)
+          if (err) return cb(err)
           console.log('incoming', header, buf.toString())
           try {
             const body = decodeMessageBody(buf, header.encoding)
             console.log('decoded', body)
             cb(null, { header, body })
           } catch (e) {
-            return cb(e)
+            cb(e)
           }
         })
       })

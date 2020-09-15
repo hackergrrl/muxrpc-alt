@@ -13,20 +13,20 @@ import test = require('tape')
 test('binary echo', t => {
   t.plan(2)
 
-  const rpc1 = new MuxRpc()
-  const rpc2 = new MuxRpc()
+  const rpc1 = new MuxRpc(onRequest)
+  const rpc2 = new MuxRpc(onRequest)
 
   rpc1.requestAsync('BinaryEcho', ['world'], (err, res) => {
     t.error(err)
     t.same(res, Buffer.from('hi world!'))
   })
 
-  rpc2.onRequest((req: any, cb) => {
+  function onRequest(req: any, cb: any) {
     const name = req.body.args[0]
     if (req.body.name === 'BinaryEcho') {
       cb(null, Encoding.Binary, Buffer.from('hi ' + name + '!'))
     } else t.fail('unknown rpc')
-  })
+  }
 
   pull(
     rpc1.getStream(),
@@ -37,20 +37,20 @@ test('binary echo', t => {
 test('json echo', t => {
   t.plan(2)
 
-  const rpc1 = new MuxRpc()
-  const rpc2 = new MuxRpc()
+  const rpc1 = new MuxRpc(onRequest)
+  const rpc2 = new MuxRpc(onRequest)
 
   rpc1.requestAsync('JsonEcho', ['world'], (err, res) => {
     t.error(err)
     t.same(res, { text: 'hi world!' })
   })
 
-  rpc2.onRequest((req: any, cb) => {
+  function onRequest(req: any, cb: any) {
     const name = req.body.args[0]
     if (req.body.name === 'JsonEcho') {
       cb(null, Encoding.Json, { text: 'hi ' + name + '!' })
     } else t.fail('unknown rpc')
-  })
+  }
 
   pull(
     rpc1.getStream(),
@@ -62,20 +62,20 @@ test('json echo', t => {
 test('utf-8 echo', t => {
   t.plan(2)
 
-  const rpc1 = new MuxRpc()
-  const rpc2 = new MuxRpc()
+  const rpc1 = new MuxRpc(onRequest)
+  const rpc2 = new MuxRpc(onRequest)
 
   rpc1.requestAsync('Utf8Echo', ['world'], (err, res) => {
     t.error(err)
     t.same(res, 'hi world!')
   })
 
-  rpc2.onRequest((req: any, cb) => {
+  function onRequest(req: any, cb: any) {
     const name = req.body.args[0]
     if (req.body.name === 'Utf8Echo') {
       cb(null, Encoding.Utf8, 'hi ' + name + '!')
     } else t.fail('unknown rpc')
-  })
+  }
 
   pull(
     rpc1.getStream(),
@@ -87,17 +87,17 @@ test('utf-8 echo', t => {
 test('async error', t => {
   t.plan(2)
 
-  const rpc1 = new MuxRpc()
-  const rpc2 = new MuxRpc()
+  const rpc1 = new MuxRpc(onRequest)
+  const rpc2 = new MuxRpc(onRequest)
 
   rpc1.requestAsync('Fail', [], (err, res) => {
     t.same(err, new Error('broken'))
     t.false(res)
   })
 
-  rpc2.onRequest((req: any, cb) => {
+  function onRequest(req: any, cb: any) {
     cb(new Error('broken'))
-  })
+  }
 
   pull(
     rpc1.getStream(),
