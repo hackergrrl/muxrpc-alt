@@ -1,9 +1,15 @@
-export type MessageBody = Buffer | string
+export type MessageBody = Buffer | string | object
+
+export enum Encoding {
+  Binary = 'binary',
+  Utf8 = 'utf8',
+  Json = 'json'
+}
 
 export interface MessageHeader {
   id: number,
   length: number,
-  encoding: string,
+  encoding: Encoding,
   err?: Error | boolean,
   stream: boolean
 }
@@ -17,4 +23,4 @@ export interface RequestMessage extends Message {
   cb: (err?: Error, res?: any) => void
 }
 
-export type RequestHandlerCb = (msg: Message, cb: (err: Error, res: Message) => void) => void
+export type RequestHandlerCb = (msg: Message, cb: (err: Error | null, enc: Encoding, res: MessageBody) => void) => void

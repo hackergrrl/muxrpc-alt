@@ -1,19 +1,18 @@
 import pull = require('pull-stream')
-import { MessageBody, MessageHeader, Message, RequestMessage, RequestHandlerCb } from './types'
+import { MessageBody, MessageHeader, Message, RequestMessage, RequestHandlerCb, Encoding } from './types'
 import Reader = require('pull-reader')
 import Pushable = require('pull-pushable')
 
 export class MuxRpc {
-  requestHandlerFn: RequestHandlerCb
-  nextRequestId: number
+  private requestHandlerFn: RequestHandlerCb
+  private nextRequestId: number
 
   // Maps a request-id to a request object
-  incoming: Map<number, Message>
-  outgoing: Map<number, RequestMessage>
+  private incoming: Map<number, Message>
+  private outgoing: Map<number, RequestMessage>
 
   // Incoming and outgoing RPC protocol streams
-  source: Pushable<Message>
-  sink: pull.Sink<Buffer>
+  private source: Pushable<Message>
   private stream: pull.Duplex<Buffer, Message>
 
   constructor() {
@@ -45,11 +44,11 @@ export class MuxRpc {
   requestAsync(name: string, args: Array<any>, cb: (err: Error, req: Message) => void) {
     const id = this.nextRequestId++
 
-    const body = Buffer.from(JSON.stringify({ name, type: 'async', args }))
+    const body = { name, type: 'async', args }
     const header = {
       id,
-      length: body.length,
-      encoding: 'json',
+      length: 0,
+      encoding: Encoding.Json,
       stream: false
     }
 
@@ -105,15 +104,14 @@ export class MuxRpc {
     console.log('brand new incoming request!', msg)
     this.incoming.set(msg.header.id, msg)
 
-    // TODO: support cancellation, so the cb below does nothing!
-    this.requestHandlerFn(msg, (err, data) => {
-      // TODO: should an error response be a JSON body'd string?
-      const body = JSON.stringify(err ? err.message : data)
+    // TODO: support cancellation, so the cb below doesn't do anything
+    this.requestHandlerFn(msg, (err, enc, data) => {
+      let body = err ? err.message : data
       const res = {
         header: {
           id: -msg.header.id,
-          length: body.length,
-          encoding: 'json',
+          length: -1,
+          encoding: enc,
           stream: false,
           err: !!err
         },
@@ -132,11 +130,13 @@ function encodeHeader(req: Message) {
   let flags = 0
   if (req.header.stream) flags |= 1 << 3
   if (req.header.err) flags |= 1 << 2
-  if (req.header.encoding === 'utf8') flags |= 1
-  else if (req.header.encoding === 'json') flags |= 1 << 1
+  if (req.header.encoding === Encoding.Utf8) flags |= 1
+  else if (req.header.encoding === Encoding.Json) flags |= 1 << 1
+
+  const length = encodeMessageBody(req.body, req.header.encoding).length
 
   header.writeUInt8(flags, 0)
-  header.writeUInt32BE(req.body.length, 1)
+  header.writeUInt32BE(length, 1)
   header.writeInt32BE(req.header.id, 5)
 
   return header
@@ -144,7 +144,8 @@ function encodeHeader(req: Message) {
 
 function encodeMessage(req: Message): Buffer {
   const header = encodeHeader(req)
-  return Buffer.concat([header, Buffer.from(req.body)])
+  const body = encodeMessageBody(req.body, req.header.encoding)
+  return Buffer.concat([header, body])
 }
 
 function decodeHeader(buf: Buffer): MessageHeader {
@@ -153,7 +154,7 @@ function decodeHeader(buf: Buffer): MessageHeader {
   const header = {
     stream: !!(f & 8),
     err: !!(f & 4),
-    encoding: (e === 0 ? 'binary' : (e === 1 ? 'utf8' : 'json')),
+    encoding: (e === 0 ? Encoding.Binary : (e === 1 ? Encoding.Utf8 : Encoding.Json)),
     length: buf.readUInt32BE(1),
     id: buf.readInt32BE(5)
   }
@@ -173,28 +174,40 @@ function decodeThrough() {
       reader.read(9, (err, buf) => {
         if (err) return cb(err)
         const header = decodeHeader(buf)
+        console.log('header', header)
 
         // read body
         reader.read(header.length, (err, buf) => {
           if (err) return reader.abort(err)
-
-          let body: MessageBody = buf
-
-          // re-encode body
-          if (header.encoding === 'json') {
-            try {
-              body = JSON.parse(buf.toString())
-            } catch (err) {
-              return cb(err)
-            }
-          } else if (header.encoding === 'utf8') {
-            body = buf.toString()
+          console.log('incoming', header, buf.toString())
+          try {
+            const body = decodeMessageBody(buf, header.encoding)
+            console.log('decoded', body)
+            cb(null, { header, body })
+          } catch (e) {
+            return cb(e)
           }
-
-          cb(null, { header, body })
         })
       })
     }
+  }
+}
+
+function decodeMessageBody(data: Buffer, encoding: Encoding): MessageBody {
+  if (encoding === Encoding.Json) {
+    return JSON.parse(data.toString())
+  } else if (encoding === Encoding.Utf8) {
+    return data.toString()
+  } else {
+    return data
+  }
+}
+
+function encodeMessageBody(data: MessageBody, encoding: Encoding): Buffer {
+  if (encoding === Encoding.Json) {
+    return Buffer.from(JSON.stringify(data))
+  } else {
+    return Buffer.from(data)
   }
 }
 
