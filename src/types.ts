@@ -23,4 +23,4 @@ export interface RequestMessage extends Message {
   cb: (err?: Error, res?: any) => void
 }
 
-export type RequestHandlerCb = (msg: Message, cb: (err: Error | null, enc: Encoding, res: MessageBody) => void) => void
+export type RequestHandlerCb = (msg: Message, cb: (err: Error | null, enc?: Encoding, res?: MessageBody) => void) => void

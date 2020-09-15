@@ -106,16 +106,32 @@ export class MuxRpc {
 
     // TODO: support cancellation, so the cb below doesn't do anything
     this.requestHandlerFn(msg, (err, enc, data) => {
-      let body = err ? err.message : data
-      const res = {
-        header: {
-          id: -msg.header.id,
-          length: -1,
-          encoding: enc,
-          stream: false,
-          err: !!err
-        },
-        body
+      let res
+      if (err) {
+        res = {
+          header: {
+            id: -msg.header.id,
+            length: -1,
+            encoding: Encoding.Json,
+            stream: false,
+            err: !!err
+          },
+          body: err.message
+        }
+      } else if (enc && data) {
+        res = {
+          header: {
+            id: -msg.header.id,
+            length: -1,
+            encoding: enc,
+            stream: false,
+            err: !!err
+          },
+          body: data
+        }
+      } else {
+        // TODO: malformed! no error, but missing encoding and/or body!
+        return
       }
 
       // send response back!
