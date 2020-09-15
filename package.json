@@ -11,7 +11,7 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
-    "coverage": "nyc --require ts-node/register -- tape tests/*.test.ts",
+    "coverage": "nyc --require ts-node/register -- tape tests/*.test.ts && nyc report --reporter=lcov && chromium coverage/lcov-report/index.html",
     "test": "tape -r ts-node/register tests/*.test.ts"
   },
   "typings": "./types/common/index.d.ts",
