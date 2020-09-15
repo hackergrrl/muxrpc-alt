@@ -1,20 +1,19 @@
 {
-  "name": "muxrpc-state",
-  "description": "An implementation of the muxrpc state machine.",
+  "name": "muxrpc-alt",
+  "description": "An alternative implementation of the muxrpc protocol.",
   "author": "Kira Oakley <kira@eight.net>",
   "version": "0.0.0",
   "repository": {
-    "url": "git://github.com/noffle/muxrpc-state.git"
+    "url": "git://github.com/noffle/muxrpc-alt.git"
   },
-  "homepage": "https://github.com/noffle/muxrpc-state",
-  "bugs": "https://github.com/noffle/muxrpc-state/issues",
+  "homepage": "https://github.com/noffle/muxrpc-alt",
+  "bugs": "https://github.com/noffle/muxrpc-alt/issues",
   "main": "index.js",
   "license": "MIT",
   "scripts": {
     "coverage": "nyc --require ts-node/register -- tape tests/*.test.ts && nyc report --reporter=lcov && chromium coverage/lcov-report/index.html",
     "test": "tape -r ts-node/register tests/*.test.ts"
   },
-  "typings": "./types/common/index.d.ts",
   "dependencies": {
     "@types/node": "^14.10.1",
     "@types/pull-stream": "^3.6.2",
