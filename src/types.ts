@@ -1,4 +1,6 @@
-export type MessageBody = Buffer | string | object
+import pull from 'pull-stream'
+
+export type MessageBody = Buffer | string | object | boolean | number | Array<any>
 
 export enum Encoding {
   Binary = 'binary',
@@ -20,7 +22,20 @@ export interface Message {
 }
 
 export interface RequestMessage extends Message {
+  header: MessageHeader,
+  body: {
+    name: string,
+    type: string,
+    args: Array<string>
+  }
+}
+
+export interface AsyncMessage extends Message {
   cb: (err?: Error, res?: any) => void
 }
 
-export type RequestHandlerCb = (msg: Message, cb: (err: Error | null, enc?: Encoding, res?: MessageBody) => void) => void
+export interface SourceMessage extends Message {
+  source: pull.Source<any>
+}
+
+export type RequestHandlerCb = any

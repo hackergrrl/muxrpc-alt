@@ -1,8 +1,10 @@
 declare module 'pull-pushable' {
   import pull = require('pull-stream')
 
-  interface Pushable<T> extends pull.Source<T> {
+  interface Pushable<T> {
     push(data: T): void
+
+    source: pull.Source<T>
   }
 
   function Pushable<T>(separated: boolean): Pushable<T>;

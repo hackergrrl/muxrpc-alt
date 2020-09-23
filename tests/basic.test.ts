@@ -34,6 +34,7 @@ test('binary echo', t => {
     rpc1.getStream()
   )
 })
+
 test('json echo', t => {
   t.plan(2)
 
@@ -97,6 +98,34 @@ test('async error', t => {
 
   function onRequest(req: any, cb: any) {
     cb(new Error('broken'))
+  }
+
+  pull(
+    rpc1.getStream(),
+    rpc2.getStream(),
+    rpc1.getStream()
+  )
+})
+
+test('source rpc', t => {
+  t.plan(2)
+
+  const rpc1 = new MuxRpc(onRequest)
+  const rpc2 = new MuxRpc(onRequest)
+
+  const src = rpc1.requestSource('RandomStream', [])
+  pull(
+    src,
+    pull.collect((err, values) => {
+      t.error(err)
+      t.deepEqual(values, [1, 2, 3])
+    })
+  )
+
+  function onRequest(req: any, cb: any) {
+    if (req.body.name === 'RandomStream') {
+      return { stream: pull.values([1, 2, 3]), encoding: 'json' }
+    } else t.fail('unknown rpc')
   }
 
   pull(
