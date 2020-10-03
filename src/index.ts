@@ -3,7 +3,7 @@ import { RequestMessage, MessageBody, MessageHeader, Message, AsyncMessage, Requ
 import Reader = require('pull-reader')
 import Pushable = require('pull-pushable')
 const Many = require('pull-many')
-const Router = require('pull-router')
+const Router = require('pull-routing')
 
 export class MuxRpc {
   private requestHandlerFn: RequestHandlerCb
@@ -82,13 +82,13 @@ export class MuxRpc {
       source: pull(
         this.multiplexedSend,
         pull.through(data => {
-          console.log('gonna send', data)
+          //          console.log('gonna send', data)
         }),
         this.encoder
       ),
       sink: pull(
         pull.through(data => {
-          console.log('recvd', (data as any).length, 'bytes')
+          //          console.log('recvd', (data as any).length, 'bytes')
         }),
         decodeThrough(),
         this.multiplexedRecv as pull.Sink<Message>

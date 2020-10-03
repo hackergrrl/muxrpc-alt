@@ -20,7 +20,8 @@
     "pull-many": "^1.0.9",
     "pull-pushable": "^2.2.0",
     "pull-reader": "^1.3.1",
-    "pull-router": "file:../pull-router"
+    "pull-routing": "^1.0.1",
+    "stream-to-pull-stream": "^1.7.3"
   },
   "devDependencies": {
     "@types/tape": "^4.13.0",
